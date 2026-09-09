@@ -5,15 +5,12 @@
 #include <cstdarg>
 #include <cstdio>
 #include <cstring>
-#include <mutex>
 
 #include <imgui.h>
 
 #include "hooks.hpp"
 #include "overlay.hpp"
 #include "tools.hpp"
-
-extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 namespace
 {

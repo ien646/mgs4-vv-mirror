@@ -4,9 +4,13 @@
 #include <imgui_impl_win32.h>
 #include <imgui_internal.h>
 
-#include "addresses.hpp"
 #include "hooks.hpp"
+#include "mgs4_addr.hpp"
 #include "tools.hpp"
+
+#include <cstdint>
+
+#define DEBUG_OVERLAY 1
 
 namespace
 {
@@ -18,6 +22,73 @@ namespace
     ID3D11RenderTargetView* dxRenderTargetView = nullptr;
 
     ImGuiContext* imguiCtx = nullptr;
+
+    template <typename... TArgs>
+    void drawTextWithOutline(const float cursorPosX, const char* format, TArgs&&... args)
+    {
+        const auto y = ImGui::GetCursorPosY();
+        ImGui::SetCursorPos(ImVec2(cursorPosX + 2, y + 2));
+        ImGui::TextColored(ImVec4(0.0F, 0.0F, 0.0F, 1.0F), format, std::forward<TArgs>(args)...);
+
+        ImGui::SetCursorPos(ImVec2(cursorPosX - 2, y - 2));
+        ImGui::TextColored(ImVec4(0.0F, 0.0F, 0.0F, 1.0F), format, std::forward<TArgs>(args)...);
+
+        ImGui::SetCursorPos(ImVec2(cursorPosX + 0, y + 0));
+        ImGui::TextColored(ImVec4(1.0F, 1.0F, 0.5F, 1.0F), format, std::forward<TArgs>(args)...);
+    }
+
+    void drawOverlay()
+    {
+        const auto io = ImGui::GetIO();
+        ImGui::GetStyle().FontScaleMain = 2.0F;
+
+        ImGui::SetNextWindowPos(ImVec2(0, 0));
+        ImGui::SetNextWindowSize(io.DisplaySize);
+        ImGui::SetNextWindowBgAlpha(0.0);
+
+        const auto textSizeKills = ImGui::CalcTextSize("Continues : 00000");
+        const auto textSizeAddr = ImGui::CalcTextSize("Base addr (00): 0x00000000");
+        const auto xPos = io.DisplaySize.x - textSizeKills.x - 10;
+
+        if (ImGui::Begin(
+                "mgs4-vv",
+                nullptr,
+                ImGuiWindowFlags_NoTitleBar
+                    | ImGuiWindowFlags_NoBackground
+                    | ImGuiWindowFlags_NoScrollbar
+                    | ImGuiWindowFlags_NoResize
+                    | ImGuiWindowFlags_NoMove))
+        {
+#if DEBUG_OVERLAY
+            const auto debugXPos = io.DisplaySize.x - ImGui::CalcTextSize("Base addr (HI): 0x0000000000000000").x - 10;
+
+            drawTextWithOutline(debugXPos, "Base addr     : 0x%016llx", getBaseAddress());
+
+            const auto kills_addr = getEffectiveAddress(mgs4_addr::KILLS_u16);
+            const auto alerts_addr = getEffectiveAddress(mgs4_addr::ALERTS_u16);
+            const auto continues_addr = getEffectiveAddress(mgs4_addr::CONTINUES_u16);
+            const auto heals_addr = getEffectiveAddress(mgs4_addr::HEALS_u16);
+
+            drawTextWithOutline(debugXPos, "Addr-kills    : 0x%016llx", kills_addr);
+            drawTextWithOutline(debugXPos, "Addr-alerts   : 0x%016llx", alerts_addr);
+            drawTextWithOutline(debugXPos, "Addr-continues: 0x%016llx", continues_addr);
+            drawTextWithOutline(debugXPos, "Addr-heals    : 0x%016llx", heals_addr);
+
+            drawTextWithOutline(debugXPos, "----------------------------------");
+#endif
+
+            const auto kills = readAddress<uint16_t>(mgs4_addr::KILLS_u16);
+            const auto alerts = readAddress<uint16_t>(mgs4_addr::ALERTS_u16);
+            const auto continues = readAddress<uint16_t>(mgs4_addr::CONTINUES_u16);
+            const auto heals = readAddress<uint16_t>(mgs4_addr::HEALS_u16);
+
+            drawTextWithOutline(xPos, "Kills     : %u", kills);
+            drawTextWithOutline(xPos, "Alerts    : %u", alerts);
+            drawTextWithOutline(xPos, "Continues : %u", continues);
+            drawTextWithOutline(xPos, "Heals     : %u", heals);
+        }
+        ImGui::End();
+    }
 } // namespace
 
 namespace overlay
@@ -59,26 +130,6 @@ namespace overlay
 
             imguiInitialized = true;
         }
-    }
-
-    void drawOverlay()
-    {
-        const auto io = ImGui::GetIO();
-        ImGui::GetStyle().FontScaleMain = 2.0F;
-
-        ImGui::SetNextWindowPos(ImVec2(0, 0));
-        ImGui::SetNextWindowSize(io.DisplaySize);
-        ImGui::SetNextWindowBgAlpha(0.0);
-
-        const auto textSize = ImGui::CalcTextSize("Kills:00000");
-
-        if (ImGui::Begin("mgs4-vv", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBackground))
-        {
-            const int kills = readAddress<int>(addresses::KILLS);
-            ImGui::SetCursorPosX(io.DisplaySize.x - textSize.x);
-            ImGui::Text("Kills:%d", kills);
-        }
-        ImGui::End();
     }
 
     void draw(IDXGISwapChain* swapchain)

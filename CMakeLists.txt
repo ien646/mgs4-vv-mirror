@@ -9,6 +9,7 @@ add_subdirectory(third-party)
 add_library(${TARGET_NAME} SHARED
         src/main.cpp
         src/hooks.cpp
+        src/mgs4_addr.cpp
         src/overlay.cpp
         src/tools.cpp
 )

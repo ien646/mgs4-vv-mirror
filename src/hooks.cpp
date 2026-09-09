@@ -7,7 +7,7 @@
 #include "overlay.hpp"
 #include "tools.hpp"
 
-extern bool ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM uint, LPARAM long_);
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 namespace
 {
@@ -77,7 +77,7 @@ void hooks::initPresentHook()
 
     D3D_FEATURE_LEVEL obtainedLevel{};
 
-    HRESULT hr = D3D11CreateDeviceAndSwapChain(
+    const HRESULT hr = D3D11CreateDeviceAndSwapChain(
         nullptr,
         D3D_DRIVER_TYPE_HARDWARE,
         nullptr,
@@ -97,15 +97,20 @@ void hooks::initPresentHook()
     }
 
     void** vtable = *reinterpret_cast<void***>(dummySwapchain);
-    originalPresent = reinterpret_cast<FnPresent>(vtable[8]); // Present is index 8
+    originalPresent = reinterpret_cast<FnPresent>(vtable[8]);
 
-    // Clean up temporary objects
     if (DummyContext)
+    {
         DummyContext->Release();
+    }
     if (dummyDevice)
+    {
         dummyDevice->Release();
+    }
     if (dummySwapchain)
+    {
         dummySwapchain->Release();
+    }
 
     if (!originalPresent)
     {
