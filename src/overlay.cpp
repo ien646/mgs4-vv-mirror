@@ -9,8 +9,9 @@
 #include "tools.hpp"
 
 #include <cstdint>
+#include <vector>
 
-#define DEBUG_OVERLAY 1
+#define DEBUG_OVERLAY 0
 
 namespace
 {
@@ -23,14 +24,19 @@ namespace
 
     ImGuiContext* imguiCtx = nullptr;
 
+    float getFontScale()
+    {
+        return ImGui::GetIO().DisplaySize.y / 2160.0F;
+    }
+
     template <typename... TArgs>
     void drawTextWithOutline(const float cursorPosX, const char* format, TArgs&&... args)
     {
         const auto y = ImGui::GetCursorPosY();
-        ImGui::SetCursorPos(ImVec2(cursorPosX + 2, y + 2));
+        ImGui::SetCursorPos(ImVec2(cursorPosX + 1, y + 1));
         ImGui::TextColored(ImVec4(0.0F, 0.0F, 0.0F, 1.0F), format, std::forward<TArgs>(args)...);
 
-        ImGui::SetCursorPos(ImVec2(cursorPosX - 2, y - 2));
+        ImGui::SetCursorPos(ImVec2(cursorPosX - 1, y - 1));
         ImGui::TextColored(ImVec4(0.0F, 0.0F, 0.0F, 1.0F), format, std::forward<TArgs>(args)...);
 
         ImGui::SetCursorPos(ImVec2(cursorPosX + 0, y + 0));
@@ -39,16 +45,17 @@ namespace
 
     void drawOverlay()
     {
-        const auto io = ImGui::GetIO();
-        ImGui::GetStyle().FontScaleMain = 2.0F;
+        auto& iio = ImGui::GetIO();
+        iio.FontGlobalScale = getFontScale() * 2;
 
         ImGui::SetNextWindowPos(ImVec2(0, 0));
-        ImGui::SetNextWindowSize(io.DisplaySize);
+        ImGui::SetNextWindowSize(iio.DisplaySize);
         ImGui::SetNextWindowBgAlpha(0.0);
 
         const auto textSizeKills = ImGui::CalcTextSize("Continues : 00000");
         const auto textSizeAddr = ImGui::CalcTextSize("Base addr (00): 0x00000000");
-        const auto xPos = io.DisplaySize.x - textSizeKills.x - 10;
+        const auto xPos = iio.DisplaySize.x - textSizeKills.x - 10;
+        const auto yPos = iio.DisplaySize.y * 0.65F;
 
         if (ImGui::Begin(
                 "mgs4-vv",
@@ -60,7 +67,7 @@ namespace
                     | ImGuiWindowFlags_NoMove))
         {
 #if DEBUG_OVERLAY
-            const auto debugXPos = io.DisplaySize.x - ImGui::CalcTextSize("Base addr (HI): 0x0000000000000000").x - 10;
+            const auto debugXPos = iio.DisplaySize.x - ImGui::CalcTextSize("Base addr (HI): 0x0000000000000000").x - 10;
 
             drawTextWithOutline(debugXPos, "Base addr     : 0x%016llx", getBaseAddress());
 
@@ -81,6 +88,8 @@ namespace
             const auto alerts = readAddress<uint16_t>(mgs4_addr::ALERTS_u16);
             const auto continues = readAddress<uint16_t>(mgs4_addr::CONTINUES_u16);
             const auto heals = readAddress<uint16_t>(mgs4_addr::HEALS_u16);
+
+            ImGui::SetCursorPosY(yPos);
 
             drawTextWithOutline(xPos, "Kills     : %u", kills);
             drawTextWithOutline(xPos, "Alerts    : %u", alerts);
